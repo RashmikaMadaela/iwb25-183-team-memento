@@ -1,0 +1,14 @@
+[package]
+org = "download"
+name = "connectly"
+version = "0.1.0"
+distribution = "2201.12.7"
+
+[build-options]
+observabilityIncluded = true
+
+# This tells Ballerina to download the required Java MySQL driver
+[[platform.java17.dependency]]
+groupId = "com.mysql"
+artifactId = "mysql-connector-j"
+version = "8.0.33"
