@@ -30,3 +30,22 @@ export const createInitiative = async (initiativeData) => {
   }
   return await response.json();
 };
+
+export const joinInitiative = async (initiativeId, participantName) => {
+  const response = await fetch(`${API_BASE_URL}/participants`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ 
+      initiative_id: initiativeId,
+      participant_name: participantName 
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to join initiative.");
+  }
+  // This endpoint returns a 201 Created status with no body, so we don't parse JSON.
+  return true; 
+};

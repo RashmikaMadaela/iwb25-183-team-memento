@@ -1,5 +1,5 @@
 // src/App.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react'; // Add useCallback
 import InitiativeCard from './components/InitiativeCard.jsx';
 import InitiativeForm from './components/InitiativeForm.jsx';
 import { getInitiatives } from './services/apiService';
@@ -9,33 +9,31 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchInitiatives = async () => {
-      try {
-        const data = await getInitiatives();
-        setInitiatives(data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchInitiatives();
+  // We define fetchInitiatives so we can reuse it
+  const fetchInitiatives = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await getInitiatives();
+      setInitiatives(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  // This function will be passed to the form component
-  const handleInitiativeCreated = (newInitiative) => {
-    // Add the new initiative to the top of the existing list
-    setInitiatives([newInitiative, ...initiatives]);
+  useEffect(() => {
+    fetchInitiatives();
+  }, [fetchInitiatives]);
 
-    // A small improvement: Fetch the full, updated record from the backend
-    // to get the real 'created_at' timestamp from the database.
-    getInitiatives().then(setInitiatives).catch(console.error);
+  const handleInitiativeCreated = (newInitiative) => {
+    // Re-fetch the full list to get the latest data from the database
+    fetchInitiatives();
   };
 
   return (
     <main className="bg-gray-50 min-h-screen">
-  <div className="w-full max-w-full mx-auto p-4 md:p-8">
+      <div className="container mx-auto p-4 md:p-8">
         <header className="mb-8">
           <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">
             Connectly
@@ -53,7 +51,11 @@ function App() {
         {!loading && !error && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {initiatives.map((initiative) => (
-              <InitiativeCard key={initiative.id} initiative={initiative} />
+              <InitiativeCard 
+                key={initiative.id} 
+                initiative={initiative} 
+                onJoinSuccess={fetchInitiatives} // Pass the refresh function to each card
+              />
             ))}
           </div>
         )}
