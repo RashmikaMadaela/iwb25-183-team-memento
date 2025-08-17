@@ -49,3 +49,23 @@ export const joinInitiative = async (initiativeId, participantName) => {
   // This endpoint returns a 201 Created status with no body, so we don't parse JSON.
   return true; 
 };
+
+// src/services/apiService.js
+
+// ... (keep the existing functions) ...
+
+export const login = async (email, password) => {
+  const response = await fetch(`${API_BASE_URL}/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email, password }),
+  });
+
+  if (!response.ok) {
+    // We can make this error more specific later
+    throw new Error("Login failed. Please check your credentials.");
+  }
+  return await response.json();
+};
