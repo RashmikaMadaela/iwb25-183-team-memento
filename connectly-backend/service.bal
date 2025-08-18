@@ -57,32 +57,76 @@ service / on new http:Listener(9090) {
     }
 
     // POST /initiatives (Secured with Session ID)
-    resource function post initiatives(@http:Header string x_session_id, @http:Payload json payload) returns http:Created|http:InternalServerError|http:Unauthorized|error {
-        User? loggedInUser = sessionStore[x_session_id];
-        if loggedInUser is () {
-            return <http:Unauthorized>{body: "Invalid session. Please log in again."};
-        }
-        if loggedInUser.role != "organization" {
-            return <http:Unauthorized>{body: "Only organizations can create initiatives."};
-        }
-        int organizationId = loggedInUser.id ?: -1;
-        
-        record {string title; string description; string? location; string? event_date;} newInitiativeData = {
-            title: check payload.title.ensureType(),
-            description: check payload.description.ensureType(),
-            location: check payload?.location.ensureType(),
-            event_date: check payload?.event_date.ensureType()
-        };
-        sql:ParameterizedQuery query = `INSERT INTO initiatives (title, description, location, event_date, organization_id) 
-                                         VALUES (${newInitiativeData.title}, ${newInitiativeData.description}, ${newInitiativeData.location}, ${newInitiativeData.event_date}, ${organizationId})`;
-        
-        sql:ExecutionResult|sql:Error result = dbClient->execute(query);
-        if result is sql:Error {
-            log:printError("Database insert failed on POST /initiatives", 'error = result);
-            return <http:InternalServerError>{body: "Database error occurred"};
-        }
-        return http:CREATED;
+resource function post initiatives(@http:Header string x_session_id, @http:Payload json payload) returns http:Created|http:InternalServerError|http:Unauthorized|error {
+    User? loggedInUser = sessionStore[x_session_id];
+    if loggedInUser is () {
+        return <http:Unauthorized>{body: "Invalid session"};
     }
+
+    if loggedInUser.role != "organization" {
+        return <http:Unauthorized>{body: "Only organizations can create initiatives"};
+    }
+
+    int organizationId = loggedInUser.id ?: -1;
+
+    // --- START NEW LOGIC ---
+    // Manually format the date to be MySQL-friendly.
+    string? eventDateFromPayload = check payload?.event_date.ensureType();
+    // assume eventDateFromPayload is a string from payload
+string? mysqlEventDate = ();
+if eventDateFromPayload is string {
+    // common ISO forms: "2025-08-29T00:00:00Z" or "2025-08-29T00:00:00.000Z" or with offset "+05:30"
+    int tIdx = eventDateFromPayload.indexOf("T") ?: -1;
+    string norm = eventDateFromPayload;
+    if tIdx != -1 {
+        norm = eventDateFromPayload.substring(0, tIdx) + " " + eventDateFromPayload.substring(tIdx + 1);
+    }
+
+    // remove trailing 'Z' if present
+    if norm.endsWith("Z") {
+        norm = norm.substring(0, norm.length() - 1);
+    }
+
+    // strip timezone offsets like "+05:30" or "-04:00"
+    int plusIdx = norm.lastIndexOf("+") ?: 0;
+    int minusIdx = norm.lastIndexOf("-") ?: 0;
+    int tzIdx = plusIdx > minusIdx ? plusIdx : minusIdx;
+    if tzIdx > 10 { // reasonable guard: timezone won't appear before date part
+        norm = norm.substring(0, tzIdx);
+    }
+
+    // truncate fractional seconds if present (.123)
+    int dotIdx = norm.indexOf(".") ?: 0;
+    if dotIdx != -1 {
+        // keep up to seconds
+        norm = norm.substring(0, dotIdx);
+    }
+
+    // ensure length is at most 19: "YYYY-MM-DD HH:MM:SS"
+    if norm.length() > 19 {
+        norm = norm.substring(0, 19);
+    }
+
+    mysqlEventDate = norm;
+}
+    // --- END NEW LOGIC ---
+
+    record {string title; string description; string? location;} newInitiativeData = {
+        title: check payload.title.ensureType(),
+        description: check payload.description.ensureType(),
+        location: check payload?.location.ensureType()
+    };
+
+    sql:ParameterizedQuery query = `INSERT INTO initiatives (title, description, location, event_date, organization_id) 
+                                     VALUES (${newInitiativeData.title}, ${newInitiativeData.description}, ${newInitiativeData.location}, ${mysqlEventDate}, ${organizationId})`;
+
+    sql:ExecutionResult|sql:Error result = dbClient->execute(query);
+    if result is sql:Error {
+        log:printError("Database insert failed on POST /initiatives", 'error = result);
+        return <http:InternalServerError>{body: "Database error occurred"};
+    }
+    return http:CREATED;
+}
 
     // POST /participants (Secured with Session ID)
     resource function post participants(@http:Header string x_session_id, @http:Payload json payload) returns http:Created|http:InternalServerError|http:Unauthorized|error {

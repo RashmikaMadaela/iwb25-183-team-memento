@@ -1,39 +1,72 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Navbar from './components/Navbar.jsx';
 import InitiativeCard from './components/InitiativeCard.jsx';
 import LoginPage from './pages/LoginPage.jsx'; 
 import RegisterPage from './pages/RegisterPage.jsx';
 import CreateInitiativePage from './pages/CreateInitiativePage.jsx'; // Make sure this is imported
+import { getInitiatives } from './services/apiService.js';
 
-// --- Dummy Data (for UI development) ---
-const DUMMY_INITIATIVES = [
-  { id: 1, title: "Beach Cleanup", creator_name: "Ocean Conservancy", participants: new Array(15), description: "Test", location: "Moratuwa", event_date: "2025-09-15T09:00:00Z" },
-  { id: 2, title: "Park Restoration", creator_name: "Green Spaces Initiative", participants: new Array(20), description: "Test2", location: "Colombo", event_date: "2025-09-15T09:00:00Z" },
-  { id: 3, title: "Community Garden", creator_name: "Urban Harvest", participants: new Array(10), description: "Test1", location: "Kandy", event_date: "2025-09-15T09:00:00Z" }
-];
-const DUMMY_USER_VOLUNTEER = { name: "Alex the Volunteer", role: "volunteer" };
-const DUMMY_USER_ORGANIZATION = { name: "Green Future Org", role: "organization" };
 
 function App() {
   const [user, setUser] = useState(null);
   const [view, setView] = useState('initiatives');
   const [initiatives, setInitiatives] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
+  const fetchInitiatives = useCallback(async () => {
+    // We don't need to set loading to true here for re-fetches,
+    // as it can cause a jarring flash of the "Loading..." text.
+    try {
+      const data = await getInitiatives();
+      setInitiatives(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      // Only set initial loading to false.
+      if (loading) setLoading(false);
+    }
+  }, [loading]);
+
   useEffect(() => {
-    setInitiatives(DUMMY_INITIATIVES);
+    // Fetch initiatives on the initial load for everyone
+    fetchInitiatives();
+  }, []);
+
+useEffect(() => {
+    // Check if a user session exists in localStorage to stay logged in
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
   }, []);
 
   const handleInitiativeCreated = () => {
-    // This function will be passed to the CreateInitiativePage
-    // It will eventually re-fetch data and switch the view back
-    alert("Initiative created successfully!"); // Placeholder
+    fetchInitiatives();
     setView('initiatives');
   };
 
-  if (view === 'login') return <LoginPage setView={setView} onLoginSuccess={setUser} />;
-  if (view === 'register') return <RegisterPage setView={setView} />;
-  if (view === 'create_initiative') return <CreateInitiativePage setView={setView} onInitiativeCreated={handleInitiativeCreated} />;
+  const handleLoginSuccess = (loggedInUser) => {
+    setUser(loggedInUser);
+    setView('initiatives');
+  };
 
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    localStorage.removeItem('session_id');
+    setUser(null);
+  };
+
+  // --- Main Content Logic ---
+  if (view === 'login') {
+    return <LoginPage onLoginSuccess={handleLoginSuccess} setView={setView} />;
+  }
+  if (view === 'register') {
+    return <RegisterPage setView={setView} />;
+  }
+  if (view === 'create_initiative') {
+    return <CreateInitiativePage onInitiativeCreated={handleInitiativeCreated} setView={setView} />;
+  }
   return (
     <div className="bg-white min-h-screen">
       <Navbar 
@@ -41,16 +74,9 @@ function App() {
         onLoginClick={() => setView('login')}
         onRegisterClick={() => setView('register')}
         onCreateClick={() => setView('create_initiative')} // Added for Navbar button
-        onLogout={() => setUser(null)}
+        onLogout={handleLogout}
       />
-       {/* --- START: User Simulator --- */}
-      <div className="bg-yellow-100 p-2 text-center text-sm text-yellow-800">
-          <span className="font-semibold">Test Controls:</span>
-          <button onClick={() => setUser(DUMMY_USER_VOLUNTEER)} className="ml-2 bg-gray-300 p-1 rounded">Login as Volunteer</button>
-          <button onClick={() => setUser(DUMMY_USER_ORGANIZATION)} className="ml-2 bg-gray-300 p-1 rounded">Login as Organization</button>
-          <button onClick={() => setUser(null)} className="ml-2 bg-gray-300 p-1 rounded">Logout (Guest)</button>
-      </div>
-      {/* --- END: User Simulator --- */}
+
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* --- START: Conditional Hero Section --- */}
         {user && user.role === 'organization' ? (
@@ -91,12 +117,15 @@ function App() {
         {/* The "Create Initiative" form is no longer here */}
 
         <h2 className="text-2xl font-bold text-gray-900 mb-6">Upcoming Initiatives</h2>
+        {loading && <p>Loading...</p>}
+        {error && <p className="text-red-500">{error}</p>}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
           {initiatives.map((initiative) => (
             <InitiativeCard 
               key={initiative.id} 
               initiative={initiative} 
               user={user}
+              onJoinSuccess={fetchInitiatives}
               navigateToLogin={() => setView('login')}
             />
           ))}

@@ -1,6 +1,5 @@
 import { useState } from 'react';
-// We will connect this to the real API service later
-// import { createInitiative } from '../services/apiService';
+import { createInitiative } from '../services/apiService';
 
 function InitiativeForm({ onInitiativeCreated }) {
   const [formData, setFormData] = useState({
@@ -17,10 +16,15 @@ function InitiativeForm({ onInitiativeCreated }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Creating initiative with:", formData);
-    // Placeholder for actual API call
-    // await createInitiative(formData); 
-    onInitiativeCreated(); // Notify the parent to switch views
+    try {
+      // This now calls the real API function
+      await createInitiative(formData);
+      alert("Initiative created successfully!");
+      onInitiativeCreated(); // Notify the parent component to refresh
+    } catch (error) {
+      console.error("Failed to submit initiative:", error);
+      alert(`Error: ${error.message}`);
+    }
   };
 
   return (

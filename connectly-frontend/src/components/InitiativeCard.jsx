@@ -1,18 +1,32 @@
-// A simple helper function to format the date nicely
+import { joinInitiative } from '../services/apiService';
+
 function formatDate(dateString) {
   if (!dateString) return null;
   const options = { year: 'numeric', month: 'long', day: 'numeric' };
   return new Date(dateString).toLocaleDateString(undefined, options);
 }
 
-function InitiativeCard({ initiative, user, navigateToLogin }) {
+function InitiativeCard({ initiative, user, navigateToLogin, onJoinSuccess }) {
   const participantCount = initiative.participants?.length || 0;
   const eventDate = formatDate(initiative.event_date);
+  const hasJoined = user && initiative.participants 
+    ? initiative.participants.some(p => p.participant_name === user.name) 
+    : false;
 
-  const handleJoinClick = () => {
-    // This logic runs only for logged-in volunteers
-    if (user && user.role === 'volunteer') {
-      alert(`Joining as ${user.name}!`); // Placeholder for the real API call
+  const handleJoinClick = async () => {
+    if (!user) {
+      navigateToLogin();
+      return;
+    }
+    if (hasJoined) return;
+
+    try {
+      await joinInitiative(initiative.id);
+      // This is the key: call the function passed from App.jsx to trigger a refresh.
+      onJoinSuccess();
+    } catch (error) {
+      console.error("Failed to join:", error);
+      alert(error.message);
     }
   };
 
@@ -29,7 +43,7 @@ function InitiativeCard({ initiative, user, navigateToLogin }) {
       <div className="pt-4 border-t border-gray-100 space-y-3">
         {initiative.location && (
           <p className="text-sm text-gray-500 flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 016 0 3 3 0 016 0z" /></svg>
             {initiative.location}
           </p>
         )}
@@ -37,22 +51,26 @@ function InitiativeCard({ initiative, user, navigateToLogin }) {
            <p className="text-sm text-gray-500 flex items-center">
              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
             {eventDate}
-          </p>
+           </p>
         )}
         <p className="text-sm font-medium text-gray-800">
           {participantCount} {participantCount === 1 ? 'person is' : 'people are'} in!
         </p>
 
-        {/* --- Conditional Buttons --- */}
+        {/* Conditional Buttons */}
         {user && user.role === 'volunteer' && (
             <button
                 onClick={handleJoinClick}
-                className="w-full mt-2 bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-600 font-semibold transition-colors"
+                disabled={hasJoined}
+                className={`w-full mt-2 text-white px-4 py-2 rounded-lg font-semibold transition-colors ${
+                  hasJoined 
+                    ? 'bg-green-500 cursor-not-allowed' 
+                    : 'bg-blue-700 hover:bg-blue-600'
+                }`}
             >
-                I'm In!
+                {hasJoined ? 'Joined!' : "I'm In!"}
             </button>
         )}
-        
         {!user && (
              <button
                 onClick={navigateToLogin}
