@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { login } from '../services/apiService';
 
-function LoginPage({ onLoginSuccess }) {
+function LoginPage({ onLoginSuccess, setView }) { // Make sure 'setView' is received as a prop
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -11,6 +11,9 @@ function LoginPage({ onLoginSuccess }) {
     setError('');
     try {
       const data = await login(email, password);
+      // Save session info and user data
+      localStorage.setItem('session_id', data.session_id);
+      localStorage.setItem('user', JSON.stringify(data.user));
       onLoginSuccess(data.user);
     } catch (err) {
       setError(err.message);
@@ -20,6 +23,13 @@ function LoginPage({ onLoginSuccess }) {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">
       <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
+        {/* --- START NEW CODE --- */}
+        <div className="text-left">
+          <button onClick={() => setView('initiatives')} className="text-sm font-medium text-blue-600 hover:underline">
+            &larr; Back to Initiatives
+          </button>
+        </div>
+        {/* --- END NEW CODE --- */}
         <h2 className="text-2xl font-bold text-center text-gray-900">Login to Connectly</h2>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
@@ -61,6 +71,12 @@ function LoginPage({ onLoginSuccess }) {
           >
             Sign in
           </button>
+          <p className="text-sm text-center">
+            Don't have an account?{' '}
+            <button type="button" onClick={() => setView('register')} className="font-medium text-blue-600 hover:underline">
+              Sign up
+            </button>
+          </p>
         </form>
       </div>
     </div>
