@@ -112,9 +112,12 @@ CREATE TABLE participants (
 ```
 # Navigate to backend directory
 cd connectly-backend
+```
 
+```
 # Create and configure Config.toml
 # Replace with your MySQL credentials
+
 cat > Config.toml << EOF
 [dbOptions]
 host="127.0.0.1"
@@ -124,6 +127,9 @@ database="connectly_db"
 port=3306
 EOF
 
+```
+
+```
 # Run the backend service
 bal run
 
