@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import Navbar from './components/Navbar.jsx';
+import Footer from './components/Footer.jsx';
 import InitiativeCard from './components/InitiativeCard.jsx';
 import LoginPage from './pages/LoginPage.jsx'; 
 import RegisterPage from './pages/RegisterPage.jsx';
@@ -69,16 +70,17 @@ useEffect(() => {
     return <CreateInitiativePage onInitiativeCreated={handleInitiativeCreated} setView={setView} />;
   }
   return (
-    <div className="bg-white min-h-screen">
+    <div className="bg-white min-h-screen pb-20">
       <Navbar 
         user={user}
         onLoginClick={() => setView('login')}
         onRegisterClick={() => setView('register')}
         onCreateClick={() => setView('create_initiative')} // Added for Navbar button
         onLogout={handleLogout}
+        onHomeClick={() => setView('initiatives')}
       />
 
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* --- START: Conditional Hero Section --- */}
         {user && user.role === 'organization' ? (
           // Hero for Organizations
@@ -143,6 +145,7 @@ useEffect(() => {
           ))}
         </div>
       </main>
+      <Footer />
     </div>
   );
 }
