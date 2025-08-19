@@ -11,7 +11,8 @@ map<User> sessionStore = {};
 @http:ServiceConfig {
     cors: {
         allowOrigins: ["*"],
-        allowMethods: ["GET", "POST"]
+        allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allowHeaders: ["Content-Type", "x_session_id"]
     }
 }
 service / on new http:Listener(9090) {
@@ -207,4 +208,131 @@ if eventDateFromPayload is string {
             return { "session_id": sessionId, "user": userResult };
         }
     }
+
+        // GET /account - returns user info and initiatives the user is associated with
+        resource function get account(@http:Header string x_session_id) returns json|http:Unauthorized|http:InternalServerError|error {
+            User? loggedInUser = sessionStore[x_session_id];
+            if loggedInUser is () {
+                return <http:Unauthorized>{body: "Invalid session"};
+            }
+
+            int userId = loggedInUser.id ?: -1;
+            Initiative[] initiativesList = [];
+
+            if loggedInUser.role == "volunteer" {
+                // Get initiatives this volunteer joined
+                sql:ParameterizedQuery q = `SELECT i.id, i.title, i.description, i.location, i.event_date, (SELECT name FROM users WHERE users.id = i.organization_id) AS creator_name, i.created_at
+                                          FROM initiatives i
+                                          JOIN participants p ON p.initiative_id = i.id
+                                          WHERE p.user_id = ${userId}
+                                          ORDER BY i.created_at DESC`;
+                stream<Initiative, sql:Error?> s = dbClient->query(q);
+                Initiative[]|sql:Error res = from var r in s select r;
+                if res is sql:Error {
+                    log:printError("Database query failed on GET /account (volunteer)", 'error = res);
+                    return <http:InternalServerError>{body: "Database error occurred"};
+                }
+                initiativesList = res;
+            } else if loggedInUser.role == "organization" {
+                // Get initiatives created by this organization
+                sql:ParameterizedQuery q = `SELECT id, title, description, location, event_date, (SELECT name FROM users WHERE users.id = initiatives.organization_id) AS creator_name, created_at
+                                          FROM initiatives
+                                          WHERE organization_id = ${userId}
+                                          ORDER BY created_at DESC`;
+                stream<Initiative, sql:Error?> s = dbClient->query(q);
+                Initiative[]|sql:Error res = from var r in s select r;
+                if res is sql:Error {
+                    log:printError("Database query failed on GET /account (organization)", 'error = res);
+                    return <http:InternalServerError>{body: "Database error occurred"};
+                }
+                initiativesList = res;
+            }
+
+            // Populate participants for each initiative (reuse same logic as /initiatives)
+            foreach int i in 0..<initiativesList.length() {
+                int initiativeId = initiativesList[i].id ?: -1;
+                if initiativeId != -1 {
+                    sql:ParameterizedQuery participantQuery = `
+                        SELECT u.name AS participant_name
+                        FROM participants p
+                        JOIN users u ON p.user_id = u.id
+                        WHERE p.initiative_id = ${initiativeId}`;
+                    stream<Participant, sql:Error?> participantStream = dbClient->query(participantQuery);
+                    Participant[]|sql:Error participants = from var p_row in participantStream select p_row;
+                    if participants is Participant[] {
+                        initiativesList[i].participants = participants;
+                    }
+                }
+            }
+
+            return { user: loggedInUser, initiatives: initiativesList };
+        }
+
+        // DELETE /participants - volunteer leaves an initiative
+        resource function delete participants(@http:Header string x_session_id, @http:Payload json payload) returns http:Accepted|http:Unauthorized|http:InternalServerError|http:NotFound|error {
+            User? loggedInUser = sessionStore[x_session_id];
+            if loggedInUser is () {
+                return <http:Unauthorized>{body: "Invalid session"};
+            }
+            if loggedInUser.role != "volunteer" {
+                return <http:Unauthorized>{body: "Only volunteers can leave initiatives"};
+            }
+            int userId = loggedInUser.id ?: -1;
+            int initiativeId = check payload.initiative_id.ensureType();
+
+            sql:ParameterizedQuery del = `DELETE FROM participants WHERE initiative_id = ${initiativeId} AND user_id = ${userId}`;
+            sql:ExecutionResult|sql:Error result = dbClient->execute(del);
+            if result is sql:Error {
+                log:printError("Failed to remove participant", 'error = result);
+                return <http:InternalServerError>{body: "Database error occurred"};
+            }
+            return http:ACCEPTED;
+        }
+
+        // DELETE /initiatives - organization deletes an initiative (and its participants)
+        resource function delete initiatives(@http:Header string x_session_id, @http:Payload json payload) returns http:Accepted|http:Unauthorized|http:InternalServerError|http:NotFound|error {
+            User? loggedInUser = sessionStore[x_session_id];
+            if loggedInUser is () {
+                return <http:Unauthorized>{body: "Invalid session"};
+            }
+            if loggedInUser.role != "organization" {
+                return <http:Unauthorized>{body: "Only organizations can delete initiatives"};
+            }
+            int orgId = loggedInUser.id ?: -1;
+            int id = check payload.id.ensureType();
+
+            // Ensure the initiative belongs to this organization
+        record { int? organization_id; }|sql:Error|() found = dbClient->queryRow(`SELECT organization_id FROM initiatives WHERE id = ${id} LIMIT 1`);
+        if found is sql:Error {
+            log:printError("Database query failed on DELETE /initiatives", 'error = found);
+            return <http:InternalServerError>{body: "Database error occurred"};
+        }
+        if found is () {
+            return <http:NotFound>{body: "Initiative not found"};
+        }
+        int? ownerId = found.organization_id;
+        if ownerId is () || ownerId != orgId {
+                return <http:Unauthorized>{body: "You don't have permission to delete this initiative"};
+            }
+
+            // Delete participants first (cascade-like)
+            sql:ParameterizedQuery delParts = `DELETE FROM participants WHERE initiative_id = ${id}`;
+            var r1 = dbClient->execute(delParts);
+            if r1 is sql:Error {
+                log:printError("Failed to delete participants for initiative", 'error = r1);
+                return <http:InternalServerError>{body: "Database error occurred"};
+            }
+
+            // Delete the initiative
+            sql:ParameterizedQuery delInit = `DELETE FROM initiatives WHERE id = ${id}`;
+            var r2 = dbClient->execute(delInit);
+            if r2 is sql:Error {
+                log:printError("Failed to delete initiative", 'error = r2);
+                return <http:InternalServerError>{body: "Database error occurred"};
+            }
+
+            return http:ACCEPTED;
+        }
+
+
 }
