@@ -89,3 +89,37 @@ export const register = async (userData) => {
   }
   return true;
 };
+
+export const getAccount = async () => {
+  const sessionId = localStorage.getItem('session_id');
+  if (!sessionId) throw new Error('No session found');
+  const response = await fetch(`${API_BASE_URL}/account`, {
+    headers: { 'x_session_id': sessionId }
+  });
+  if (!response.ok) throw new Error('Failed to fetch account');
+  return await response.json();
+};
+
+export const leaveInitiative = async (initiativeId) => {
+  const sessionId = localStorage.getItem('session_id');
+  if (!sessionId) throw new Error('No session found');
+  const response = await fetch(`${API_BASE_URL}/participants`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', 'x_session_id': sessionId },
+    body: JSON.stringify({ initiative_id: initiativeId })
+  });
+  if (!response.ok) throw new Error('Failed to leave initiative');
+  return true;
+};
+
+export const deleteInitiative = async (id) => {
+  const sessionId = localStorage.getItem('session_id');
+  if (!sessionId) throw new Error('No session found');
+  const response = await fetch(`${API_BASE_URL}/initiatives`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', 'x_session_id': sessionId },
+    body: JSON.stringify({ id })
+  });
+  if (!response.ok) throw new Error('Failed to delete initiative');
+  return true;
+};

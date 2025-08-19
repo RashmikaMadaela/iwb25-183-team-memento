@@ -5,6 +5,7 @@ import InitiativeCard from './components/InitiativeCard.jsx';
 import LoginPage from './pages/LoginPage.jsx'; 
 import RegisterPage from './pages/RegisterPage.jsx';
 import CreateInitiativePage from './pages/CreateInitiativePage.jsx'; // Make sure this is imported
+import AccountPage from './pages/AccountPage.jsx';
 import { getInitiatives } from './services/apiService.js';
 
 
@@ -35,6 +36,11 @@ function App() {
     fetchInitiatives();
   }, []);
 
+  useEffect(() => {
+    // Re-fetch initiatives every time we navigate to the initiatives view
+    if (view === 'initiatives') fetchInitiatives(searchTerm);
+  }, [view]);
+
 useEffect(() => {
     // Check if a user session exists in localStorage to stay logged in
     const storedUser = localStorage.getItem('user');
@@ -59,12 +65,17 @@ useEffect(() => {
     setUser(null);
   };
 
+  const handleAccountClick = () => setView('account');
+
   // --- Main Content Logic ---
   if (view === 'login') {
     return <LoginPage onLoginSuccess={handleLoginSuccess} setView={setView} />;
   }
   if (view === 'register') {
     return <RegisterPage setView={setView} />;
+  }
+  if (view === 'account') {
+    return <AccountPage setView={setView} />;
   }
   if (view === 'create_initiative') {
     return <CreateInitiativePage onInitiativeCreated={handleInitiativeCreated} setView={setView} />;
@@ -78,6 +89,7 @@ useEffect(() => {
         onCreateClick={() => setView('create_initiative')} // Added for Navbar button
         onLogout={handleLogout}
         onHomeClick={() => setView('initiatives')}
+        onAccountClick={handleAccountClick}
       />
 
   <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">

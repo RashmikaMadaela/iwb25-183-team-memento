@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-function Navbar({ user, onLoginClick, onRegisterClick, onLogout, onHomeClick }) {
+function Navbar({ user, onLoginClick, onRegisterClick, onLogout, onHomeClick, onAccountClick }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -18,7 +18,8 @@ function Navbar({ user, onLoginClick, onRegisterClick, onLogout, onHomeClick }) 
               {user ? (
                 <>
                   <span className="text-gray-700">Welcome, {user.name}!</span>
-                  <button onClick={onLogout} className="text-gray-500 hover:text-gray-900">Logout</button>
+                  <button onClick={() => onAccountClick && onAccountClick()} className="text-gray-700 hover:text-gray-900 ml-2">Account</button>
+                  <button onClick={onLogout} className="text-gray-500 hover:text-gray-900 ml-2">Logout</button>
                 </>
               ) : (
                 <>
@@ -45,7 +46,10 @@ function Navbar({ user, onLoginClick, onRegisterClick, onLogout, onHomeClick }) 
         <div className="md:hidden">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
             {user ? (
-              <button onClick={onLogout} className="text-gray-700 hover:bg-gray-100 block px-3 py-2 rounded-md text-base font-medium w-full text-left">Logout</button>
+              <>
+                <button onClick={() => { if (onAccountClick) onAccountClick(); }} className="text-gray-700 hover:bg-gray-100 block px-3 py-2 rounded-md text-base font-medium w-full text-left">Account</button>
+                <button onClick={onLogout} className="text-gray-700 hover:bg-gray-100 block px-3 py-2 rounded-md text-base font-medium w-full text-left">Logout</button>
+              </>
             ) : (
               <>
                 <button onClick={onRegisterClick} className="text-white bg-blue-600 block px-3 py-2 rounded-md text-base font-medium w-full text-left">Register</button>
