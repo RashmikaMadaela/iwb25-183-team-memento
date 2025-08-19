@@ -24,6 +24,9 @@ function LoginPage({ onLoginSuccess, setView }) {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">
       <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
+        <button onClick={() => setView('initiatives')} className="text-blue-600 hover:underline mb-4">
+              &larr; Back to all initiatives
+          </button>
         <h2 className="text-2xl font-bold text-center text-gray-900">Login to Connectly</h2>
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Input fields remain the same */}

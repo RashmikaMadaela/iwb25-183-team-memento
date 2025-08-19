@@ -17,44 +17,50 @@ map<User> sessionStore = {};
 service / on new http:Listener(9090) {
 
     // GET /initiatives (Publicly accessible with search)
-    resource function get initiatives(@http:Query string? search = ()) returns Initiative[]|http:InternalServerError|error {
-        // --- START: Search Logic ---
-        sql:ParameterizedQuery query;
-        if search is string && search != "" {
-            // If a search term is provided, add a WHERE clause
-            string searchTerm = "%" + search + "%";
-            query = `SELECT id, title, description, location, event_date, (SELECT name FROM users WHERE users.id = initiatives.organization_id) AS creator_name, created_at 
-                     FROM initiatives 
-                     WHERE title LIKE ${searchTerm} OR description LIKE ${searchTerm}
-                     ORDER BY created_at DESC`;
-        } else {
-            // If no search term, get all initiatives
-            query = `SELECT id, title, description, location, event_date, (SELECT name FROM users WHERE users.id = initiatives.organization_id) AS creator_name, created_at 
-                     FROM initiatives 
-                     ORDER BY created_at DESC`;
-        }
-        // --- END: Search Logic ---
+    // GET /initiatives (Publicly accessible with search)
+resource function get initiatives(@http:Query string? search = ()) returns Initiative[]|http:InternalServerError|error {
+    sql:ParameterizedQuery query;
+    if search is string && search != "" {
+        string searchTerm = "%" + search + "%";
+        query = `SELECT id, title, description, location, event_date, (SELECT name FROM users WHERE users.id = initiatives.organization_id) AS creator_name, created_at 
+                 FROM initiatives 
+                 WHERE title LIKE ${searchTerm} OR description LIKE ${searchTerm}
+                 ORDER BY created_at DESC`;
+    } else {
+        query = `SELECT id, title, description, location, event_date, (SELECT name FROM users WHERE users.id = initiatives.organization_id) AS creator_name, created_at 
+                 FROM initiatives 
+                 ORDER BY created_at DESC`;
+    }
 
-        stream<Initiative, sql:Error?> resultStream = dbClient->query(query);
-        Initiative[]|sql:Error initiativesResult = from var row in resultStream select row;
-        if initiativesResult is sql:Error {
-            log:printError("Database query failed on GET /initiatives", 'error = initiativesResult);
-            return <http:InternalServerError>{body: "Database error occurred"};
-        }
+    stream<Initiative, sql:Error?> resultStream = dbClient->query(query);
+    Initiative[]|sql:Error initiativesResult = from var row in resultStream select row;
+    if initiativesResult is sql:Error {
+        log:printError("Database query failed on GET /initiatives", 'error = initiativesResult);
+        return <http:InternalServerError>{body: "Database error occurred"};
+    }
 
-        foreach int i in 0..<initiativesResult.length() {
-            int initiativeId = initiativesResult[i].id ?: -1;
-            if initiativeId != -1 {
-                sql:ParameterizedQuery participantQuery = `SELECT user_id, (SELECT name FROM users WHERE users.id = participants.user_id) AS participant_name FROM participants WHERE initiative_id = ${initiativeId}`;
-                stream<Participant, sql:Error?> participantStream = dbClient->query(participantQuery);
-                Participant[]|sql:Error participants = from var p_row in participantStream select p_row;
-                if participants is Participant[] {
-                    initiativesResult[i].participants = participants;
-                }
+    foreach int i in 0..<initiativesResult.length() {
+        int initiativeId = initiativesResult[i].id ?: -1;
+        if initiativeId != -1 {
+            // --- START: CORRECTED QUERY ---
+            // This query now correctly joins the participants and users tables
+            // to get the name of each participant.
+            sql:ParameterizedQuery participantQuery = `
+                SELECT u.name AS participant_name 
+                FROM participants p
+                JOIN users u ON p.user_id = u.id
+                WHERE p.initiative_id = ${initiativeId}`;
+            // --- END: CORRECTED QUERY ---
+            
+            stream<Participant, sql:Error?> participantStream = dbClient->query(participantQuery);
+            Participant[]|sql:Error participants = from var p_row in participantStream select p_row;
+            if participants is Participant[] {
+                initiativesResult[i].participants = participants;
             }
         }
-        return initiativesResult;
     }
+    return initiativesResult;
+}
 
     // POST /initiatives (Secured with Session ID)
 resource function post initiatives(@http:Header string x_session_id, @http:Payload json payload) returns http:Created|http:InternalServerError|http:Unauthorized|error {

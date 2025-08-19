@@ -72,7 +72,7 @@ function InitiativeCard({ initiative, user, navigateToLogin, onJoinSuccess }) {
             </button>
         )}
         {!user && (
-             <button
+            <button
                 onClick={navigateToLogin}
                 className="w-full mt-2 bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 font-semibold transition-colors"
             >

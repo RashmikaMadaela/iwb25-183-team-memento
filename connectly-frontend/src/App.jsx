@@ -11,14 +11,15 @@ function App() {
   const [user, setUser] = useState(null);
   const [view, setView] = useState('initiatives');
   const [initiatives, setInitiatives] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  const fetchInitiatives = useCallback(async () => {
+  const fetchInitiatives = useCallback(async (term = '') => {
     // We don't need to set loading to true here for re-fetches,
     // as it can cause a jarring flash of the "Loading..." text.
     try {
-      const data = await getInitiatives();
+  const data = await getInitiatives(term);
       setInitiatives(data);
     } catch (err) {
       setError(err.message);
@@ -104,11 +105,22 @@ useEffect(() => {
               Find your next volunteering opportunity
             </h1>
             <div className="mt-6 max-w-2xl mx-auto">
-              <input 
-                type="search"
-                placeholder="Search for initiatives..."
-                className="w-full px-5 py-3 border border-gray-300 rounded-full shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <div className="flex items-center">
+                <input 
+                  type="search"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') fetchInitiatives(searchTerm); }}
+                  placeholder="Search for initiatives..."
+                  className="flex-1 px-5 py-3 border border-gray-300 rounded-l-full shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  onClick={() => fetchInitiatives(searchTerm)}
+                  className="ml-2 bg-blue-600 text-white px-4 py-3 rounded-r-full font-semibold hover:bg-blue-700 transition"
+                >
+                  Search
+                </button>
+              </div>
             </div>
           </div>
         )}
