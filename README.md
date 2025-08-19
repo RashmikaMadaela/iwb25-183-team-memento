@@ -55,7 +55,14 @@ Before running this application, ensure you have the following installed:
 🚀 Quick Start
 --------------
 
-### 1\. Database Setup
+### 1\. Clone the Repository
+
+```
+git clone https://github.com/your-username/connectly.git
+cd connectly
+```
+
+### 2\. Database Setup
 
 Connect to your MySQL server and run the following script:
 
@@ -100,7 +107,7 @@ CREATE TABLE participants (
 
 ```
 
-### 2\. Backend Setup
+### 3\. Backend Setup
 
 ```
 # Navigate to backend directory
@@ -124,7 +131,7 @@ bal run
 
 The backend will be available at `http://localhost:9090`
 
-### 3\. Frontend Setup
+### 4\. Frontend Setup
 
 Open a new terminal window:
 
