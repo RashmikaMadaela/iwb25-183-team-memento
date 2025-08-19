@@ -117,12 +117,16 @@ cd connectly-backend
 ```
 # Create and configure Config.toml
 # Replace with your MySQL credentials
+
+cat > Config.toml << EOF
 [dbOptions]
 host="127.0.0.1"
 user="your_mysql_user"
 password="your_mysql_password"
 database="connectly_db"
 port=3306
+EOF
+
 ```
 
 ```
