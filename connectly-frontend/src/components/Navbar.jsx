@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-function Navbar({ user, onLoginClick, onRegisterClick, onLogout }) {
+function Navbar({ user, onLoginClick, onRegisterClick, onLogout, onHomeClick }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -8,7 +8,8 @@ function Navbar({ user, onLoginClick, onRegisterClick, onLogout }) {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
-            <a href="#" className="font-bold text-2xl text-gray-900">
+            <a href="#" onClick={(e) => { e.preventDefault(); if (onHomeClick) onHomeClick(); }} className="font-bold text-2xl text-gray-700">
+              <img src='/src/assets/logo.png' alt='Connectly Logo' className="h-12 mr-2 inline" />
               Connectly
             </a>
           </div>
