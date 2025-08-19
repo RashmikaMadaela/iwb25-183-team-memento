@@ -58,7 +58,7 @@ Before running this application, ensure you have the following installed:
 ### 1\. Clone the Repository
 
 ```
-git clone https://github.com/your-username/connectly.git
+git clone https://github.com/RashmikaMadaela/connectly.git 
 cd connectly
 ```
 
