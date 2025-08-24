@@ -50,7 +50,8 @@ function AccountPage({ setView }) {
   return (
     <>
       <Navbar onLoginClick={() => setView('login')} onRegisterClick={() => setView('register')} onLogout={() => setView('initiatives')} onHomeClick={() => setView('initiatives')} onAccountClick={() => setView('account')} />
-      <div className="container mx-auto px-4 py-8 pb-20">
+      <div className="bg-gradient-to-br from-blue-100 to-blue-300 min-h-screen">
+        <div className="container mx-auto px-4 py-8 pb-20">
         <h1 className="text-2xl font-bold mb-4">Account</h1>
         <p className="mb-6">Logged in as <strong>{user.name}</strong> ({user.role})</p>
 
@@ -104,6 +105,7 @@ function AccountPage({ setView }) {
           </div>
         </div>
       )}
+      </div>
       </div>
       <Footer />
     </>

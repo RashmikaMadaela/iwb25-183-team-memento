@@ -81,7 +81,7 @@ useEffect(() => {
     return <CreateInitiativePage onInitiativeCreated={handleInitiativeCreated} setView={setView} />;
   }
   return (
-    <div className="bg-white min-h-screen pb-20">
+    <div className="bg-gradient-to-br from-blue-100 to-blue-300 min-h-screen pb-20">
       <Navbar 
         user={user}
         onLoginClick={() => setView('login')}
